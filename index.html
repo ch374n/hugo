@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>For you</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    color-scheme:light dark;
+    --bg:#fdf3ea; --card:#fff8f1; --line:rgba(120,90,80,.16);
+    --ink:#4a3a33; --ink-soft:#8a7268;
+    --a1:#c98a5b; --a2:#eac298;
+    --b1:#d38ba0; --b2:#f2c6d2;
+    --blush:#e2798d; --heart:#e05a6f;
+    --couch:#8f9fb5; --couch2:#a9b8cb;
+    --accent:#c4566b;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#241b20; --card:#2f2329; --line:rgba(255,220,210,.12);
+      --ink:#f3e2da; --ink-soft:#bda49b;
+      --a1:#a9714a; --a2:#c9a077;
+      --b1:#b06e83; --b2:#d6a2b3;
+      --blush:#d4657c; --heart:#e56a7e;
+      --couch:#5c6a80; --couch2:#6f7e95;
+      --accent:#f0909f;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#241b20; --card:#2f2329; --line:rgba(255,220,210,.12);
+    --ink:#f3e2da; --ink-soft:#bda49b;
+    --a1:#a9714a; --a2:#c9a077;
+    --b1:#b06e83; --b2:#d6a2b3;
+    --blush:#d4657c; --heart:#e56a7e;
+    --couch:#5c6a80; --couch2:#6f7e95;
+    --accent:#f0909f;
+  }
+
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:"Fredoka","Trebuchet MS",-apple-system,"Segoe UI",sans-serif;
+    overscroll-behavior:none;
+  }
+
+  .app{
+    display:flex; flex-direction:column;
+    min-height:100vh; min-height:100dvh;
+    padding:env(safe-area-inset-top) 0 calc(env(safe-area-inset-bottom));
+  }
+  .app[hidden]{display:none;}
+
+  .bar{
+    display:flex; align-items:center; justify-content:center; gap:.45rem;
+    padding:.9rem 1rem .2rem; font-size:.9rem; color:var(--ink-soft);
+  }
+  .bar .dot{width:5px;height:5px;border-radius:50%;background:var(--accent);opacity:.6;}
+
+  /* ---- stage ---- */
+  .stage{
+    flex:1 1 auto; min-height:0;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    padding:.5rem 1rem 1rem; text-align:center;
+  }
+  .scene{display:none;}
+  .scene.on{display:block; width:100%;}
+  .art{width:100%; max-width:min(92vw,420px); height:auto; display:block; margin:0 auto;}
+  .stage.pop .scene.on .art{animation:pop .75s cubic-bezier(.22,1.2,.36,1) both;}
+  @keyframes pop{
+    0%{transform:scale(.72); opacity:0}
+    60%{transform:scale(1.04); opacity:1}
+    100%{transform:scale(1)}
+  }
+  .art{animation:sway 6s ease-in-out infinite alternate;}
+  @keyframes sway{from{transform:translateY(0)}to{transform:translateY(-5px)}}
+  .hb{animation:rise 3.2s ease-in-out infinite;}
+  @keyframes rise{
+    0%{opacity:0; transform:translateY(6px) scale(.7)}
+    25%{opacity:1; transform:translateY(0) scale(1)}
+    70%{opacity:1; transform:translateY(-8px) scale(1)}
+    100%{opacity:0; transform:translateY(-18px) scale(.85)}
+  }
+
+  .caption{margin:1rem 0 0; font-size:clamp(1.3rem,5.6vw,1.9rem); font-weight:500; line-height:1.2;}
+  .stamp{margin:.4rem 0 0; font-size:.88rem; color:var(--ink-soft);}
+  .empty .caption{color:var(--ink-soft); font-weight:400;}
+
+  /* ---- tray ---- */
+  .tray{
+    display:grid; gap:.55rem; padding:.6rem .8rem 1rem;
+    grid-template-columns:repeat(3,1fr);
+  }
+  .tray .pick:nth-child(4){grid-column:1 / span 1;}
+  .pick{
+    display:flex; flex-direction:column; align-items:center; gap:.2rem;
+    padding:.5rem .3rem .45rem; border:1px solid var(--line); border-radius:18px;
+    background:var(--card); color:var(--ink); font:inherit; font-size:.76rem;
+    cursor:pointer; -webkit-tap-highlight-color:transparent;
+    transition:transform .18s cubic-bezier(.2,.9,.3,1.4), border-color .2s ease;
+  }
+  .pick:active{transform:scale(.94);}
+  .pick[data-sending="1"]{border-color:var(--accent);}
+  .pick:focus-visible{outline:2.5px solid var(--accent); outline-offset:2px;}
+  .thumb{display:block; width:100%; pointer-events:none;}
+  .mini{width:100%; height:auto; animation:none;}
+  .mini .hb{animation:none;}
+  .lab{color:var(--ink-soft); line-height:1.1;}
+  @media (min-width:560px){
+    .tray{grid-template-columns:repeat(5,1fr); max-width:760px; margin:0 auto; width:100%;}
+    .tray .pick:nth-child(4){grid-column:auto;}
+  }
+
+  .toast{
+    position:fixed; left:50%; transform:translateX(-50%) translateY(-8px);
+    top:calc(.7rem + env(safe-area-inset-top)); z-index:5;
+    padding:.4rem .9rem; border-radius:999px;
+    background:var(--accent); color:#fff; font-size:.82rem;
+    opacity:0; pointer-events:none; transition:opacity .3s ease, transform .3s ease;
+  }
+  .toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
+
+  /* ---- gate ---- */
+  .gate{
+    position:fixed; inset:0; z-index:10; background:var(--bg); color:var(--ink);
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:1rem; padding:2rem 1.5rem; text-align:center;
+  }
+  .gate[hidden]{display:none;}
+  .gate .art{max-width:260px; margin-bottom:.5rem;}
+  .gate h1{margin:0; font-size:1.45rem; font-weight:500;}
+  .gate p{margin:0; font-size:.92rem; max-width:22rem; line-height:1.5; color:var(--ink-soft);}
+  .gate form{display:flex; flex-direction:column; gap:.7rem; width:100%; max-width:20rem;}
+  .gate input{
+    font:inherit; font-size:1rem; padding:.85rem 1rem; border-radius:14px;
+    border:1.5px solid var(--line); background:var(--card); color:inherit; text-align:center;
+  }
+  .gate button{
+    font:inherit; font-size:1rem; font-weight:500; padding:.85rem 1rem;
+    border:0; border-radius:14px; background:var(--accent); color:#fff; cursor:pointer;
+  }
+  .gate .err{color:#c0503f; min-height:1.2em; font-size:.88rem;}
+
+  @media (prefers-reduced-motion: reduce){
+    *{animation:none !important;}
+    .pick,.toast{transition-duration:.01ms !important;}
+  }
+</style>
+</head>
+<body>
+
+<div class="toast" id="toast"></div>
+
+<div class="app" id="app" hidden>
+  <header class="bar"><span id="whoami"></span><span class="dot"></span></header>
+
+  <main class="stage" id="stage">
+    <div class="scene" data-g="hug"><svg class="art " viewBox="0 0 220 165" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M150 96 Q110 84 70 94" fill="none" stroke="var(--b1)" stroke-width="10" stroke-linecap="round"/><g transform="translate(86,68) rotate(11) scale(1.0)">
+<circle cx="-17" cy="-16" r="9" fill="var(--a1)"/><circle cx="17" cy="-16" r="9" fill="var(--a1)"/>
+<circle cx="-17" cy="-16" r="4.6" fill="var(--a2)"/><circle cx="17" cy="-16" r="4.6" fill="var(--a2)"/>
+<ellipse cx="0" cy="44" rx="21" ry="24" fill="var(--a1)"/>
+<ellipse cx="0" cy="49" rx="12.5" ry="16" fill="var(--a2)" opacity=".75"/>
+<circle cx="0" cy="0" r="23" fill="var(--a1)"/>
+<ellipse cx="0" cy="8" rx="12" ry="9" fill="var(--a2)"/>
+<ellipse cx="0" cy="3.5" rx="3.4" ry="2.6" fill="var(--ink)"/>
+<path d="M-13.0 -2.5 q4.5 -5.5 9 0" fill="none" stroke="var(--ink)" stroke-width="2.4" stroke-linecap="round"/>
+<path d="M4.0 -2.5 q4.5 -5.5 9 0" fill="none" stroke="var(--ink)" stroke-width="2.4" stroke-linecap="round"/>
+<ellipse cx="-17.0" cy="7" rx="5" ry="3.2" fill="var(--blush)" opacity=".45"/>
+<ellipse cx="17.0" cy="7" rx="5" ry="3.2" fill="var(--blush)" opacity=".45"/>
+</g><g transform="translate(134,68) rotate(-11) scale(1.0)">
+<circle cx="-17" cy="-16" r="9" fill="var(--b1)"/><circle cx="17" cy="-16" r="9" fill="var(--b1)"/>
+<circle cx="-17" cy="-16" r="4.6" fill="var(--b2)"/><circle cx="17" cy="-16" r="4.6" fill="var(--b2)"/>
+<ellipse cx="0" cy="44" rx="21" ry="24" fill="var(--b1)"/>
+<ellipse cx="0" cy="49" rx="12.5" ry="16" fill="var(--b2)" opacity=".75"/>
+<circle cx="0" cy="0" r="23" fill="var(--b1)"/>
+<ellipse cx="0" cy="8" rx="12" ry="9" fill="var(--b2)"/>
+<ellipse cx="0" cy="3.5" rx="3.4" ry="2.6" fill="var(--ink)"/>
+<path d="M-13.0 -2.5 q4.5 -5.5 9 0" fill="none" stroke="var(--ink)" stroke-width="2.4" stroke-linecap="round"/>
+<path d="M4.0 -2.5 q4.5 -5.5 9 0" fill="none" stroke="var(--ink)" stroke-width="2.4" stroke-linecap="round"/>
+<ellipse cx="-17.0" cy="7" rx="5" ry="3.2" fill="var(--blush)" opacity=".45"/>
+<ellipse cx="17.0" cy="7" rx="5" ry="3.2" fill="var(--blush)" opacity=".45"/>
+</g><path d="M68 104 Q110 126 152 104" fill="none" stroke="var(--a1)" stroke-width="11" stroke-linecap="round"/><g class="hb" style="animation-delay:0s"><path transform="translate(110,30) scale(1.5)" opacity="0.95" fill="var(--heart)" d="M0 5.6 C -6.6 -1.4, -3.8 -8.2, 0 -3.6 C 3.8 -8.2, 6.6 -1.4, 0 5.6 Z"/></g><g class="hb" style="animation-delay:0.9s"><path transform="translate(84,40) scale(1.0)" opacity="0.7" fill="var(--heart)" d="M0 5.6 C -6.6 -1.4, -3.8 -8.2, 0 -3.6 C 3.8 -8.2, 6.6 -1.4, 0 5.6 Z"/></g><g class="hb" style="animation-delay:1.7s"><path transform="translate(136,42) scale(1.1)" opacity="0.7" fill="var(--heart)" d="M0 5.6 C -6.6 -1.4, -3.8 -8.2, 0 -3.6 C 3.8 -8.2, 6.6 -1.4, 0 5.6 Z"/></g></svg></div>
+<div class="scene" data-g="kiss"><svg class="art " viewBox="0 0 220 165" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><g transform="translate(92,72) rotate(14) scale(1.0)">
+<circle cx="-17" cy="-16" r="9" fill="var(--a1)"/><circle cx="17" cy="-16" r="9" fill="var(--a1)"/>
+<circle cx="-17" cy="-16" r="4.6" fill="var(--a2)"/><circle cx="17" cy="-16" r="4.6" fill="var(--a2)"/>
+<ellipse cx="0" cy="44" rx="21" ry="24" fill="var(--a1)"/>
+<ellipse cx="0" cy="49" rx="12.5" ry="16" fill="var(--a2)" opacity=".75"/>
+<circle cx="0" cy="0" r="23" fill="var(--a1)"/>
+<ellipse cx="11" cy="8" rx="12" ry="9" fill="var(--a2)"/>
+<ellipse cx="11" cy="3.5" rx="3.4" ry="2.6" fill="var(--ink)"/>
+<path d="M-8.05 -2.5 q4.5 -5.5 9 0" fill="none" stroke="var(--ink)" stroke-width="2.4" stroke-linecap="round"/>
+<path d="M8.95 -2.5 q4.5 -5.5 9 0" fill="none" stroke="var(--ink)" stroke-width="2.4" stroke-linecap="round"/>
+<ellipse cx="-14.525" cy="7" rx="5" ry="3.2" fill="var(--blush)" opacity=".45"/>
+<ellipse cx="19.475" cy="7" rx="5" ry="3.2" fill="var(--blush)" opacity=".45"/>
+</g><g transform="translate(128,72) rotate(-14) scale(1.0)">
+<circle cx="-17" cy="-16" r="9" fill="var(--b1)"/><circle cx="17" cy="-16" r="9" fill="var(--b1)"/>
+<circle cx="-17" cy="-16" r="4.6" fill="var(--b2)"/><circle cx="17" cy="-16" r="4.6" fill="var(--b2)"/>
+<ellipse cx="0" cy="44" rx="21" ry="24" fill="var(--b1)"/>
+<ellipse cx="0" cy="49" rx="12.5" ry="16" fill="var(--b2)" opacity=".75"/>
+<circle cx="0" cy="0" r="23" fill="var(--b1)"/>
+<ellipse cx="-11" cy="8" rx="12" ry="9" fill="var(--b2)"/>
+<ellipse cx="-11" cy="3.5" rx="3.4" ry="2.6" fill="var(--ink)"/>
+<path d="M-17.95 -2.5 q4.5 -5.5 9 0" fill="none" stroke="var(--ink)" stroke-width="2.4" stroke-linecap="round"/>
+<path d="M-0.9500000000000002 -2.5 q4.5 -5.5 9 0" fill="none" stroke="var(--ink)" stroke-width="2.4" stroke-linecap="round"/>
+<ellipse cx="-19.475" cy="7" rx="5" ry="3.2" fill="var(--blush)" opacity=".45"/>
+<ellipse cx="14.525" cy="7" rx="5" ry="3.2" fill="var(--blush)" opacity=".45"/>
+</g><path d="M72 102 Q110 122 148 104" fill="none" stroke="var(--a1)" stroke-width="11" stroke-linecap="round"/><g class="hb" style="animation-delay:0s"><path transform="translate(110,26) scale(1.9)" opacity="0.95" fill="var(--heart)" d="M0 5.6 C -6.6 -1.4, -3.8 -8.2, 0 -3.6 C 3.8 -8.2, 6.6 -1.4, 0 5.6 Z"/></g><g class="hb" style="animation-delay:0.8s"><path transform="translate(86,40) scale(1.0)" opacity="0.65" fill="var(--heart)" d="M0 5.6 C -6.6 -1.4, -3.8 -8.2, 0 -3.6 C 3.8 -8.2, 6.6 -1.4, 0 5.6 Z"/></g><g class="hb" style="animation-delay:1.6s"><path transform="translate(136,38) scale(1.1)" opacity="0.65" fill="var(--heart)" d="M0 5.6 C -6.6 -1.4, -3.8 -8.2, 0 -3.6 C 3.8 -8.2, 6.6 -1.4, 0 5.6 Z"/></g></svg></div>
+<div class="scene" data-g="neck"><svg class="art " viewBox="0 0 220 165" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><g transform="translate(134,62) rotate(-5) scale(1.0)">
+<circle cx="-17" cy="-16" r="9" fill="var(--b1)"/><circle cx="17" cy="-16" r="9" fill="var(--b1)"/>
+<circle cx="-17" cy="-16" r="4.6" fill="var(--b2)"/><circle cx="17" cy="-16" r="4.6" fill="var(--b2)"/>
+<ellipse cx="0" cy="44" rx="21" ry="24" fill="var(--b1)"/>
+<ellipse cx="0" cy="49" rx="12.5" ry="16" fill="var(--b2)" opacity=".75"/>
+<circle cx="0" cy="0" r="23" fill="var(--b1)"/>
+<ellipse cx="0" cy="8" rx="12" ry="9" fill="var(--b2)"/>
+<ellipse cx="0" cy="3.5" rx="3.4" ry="2.6" fill="var(--ink)"/>
+<path d="M-13.0 -2.5 q4.5 -5.5 9 0" fill="none" stroke="var(--ink)" stroke-width="2.4" stroke-linecap="round"/>
+<path d="M4.0 -2.5 q4.5 -5.5 9 0" fill="none" stroke="var(--ink)" stroke-width="2.4" stroke-linecap="round"/>
+<ellipse cx="-17.0" cy="7" rx="5" ry="3.2" fill="var(--blush)" opacity=".45"/>
+<ellipse cx="17.0" cy="7" rx="5" ry="3.2" fill="var(--blush)" opacity=".45"/>
+</g><g transform="translate(104,80) rotate(32) scale(0.92)">
+<circle cx="-17" cy="-16" r="9" fill="var(--a1)"/><circle cx="17" cy="-16" r="9" fill="var(--a1)"/>
+<circle cx="-17" cy="-16" r="4.6" fill="var(--a2)"/><circle cx="17" cy="-16" r="4.6" fill="var(--a2)"/>
+<ellipse cx="0" cy="44" rx="21" ry="24" fill="var(--a1)"/>
+<ellipse cx="0" cy="49" rx="12.5" ry="16" fill="var(--a2)" opacity=".75"/>
+<circle cx="0" cy="0" r="23" fill="var(--a1)"/>
+<ellipse cx="12" cy="8" rx="12" ry="9" fill="var(--a2)"/>
+<ellipse cx="12" cy="3.5" rx="3.4" ry="2.6" fill="var(--ink)"/>
+<path d="M-7.6 -2.5 q4.5 -5.5 9 0" fill="none" stroke="var(--ink)" stroke-width="2.4" stroke-linecap="round"/>
+<path d="M9.4 -2.5 q4.5 -5.5 9 0" fill="none" stroke="var(--ink)" stroke-width="2.4" stroke-linecap="round"/>
+<ellipse cx="-14.3" cy="7" rx="5" ry="3.2" fill="var(--blush)" opacity=".45"/>
+<ellipse cx="19.7" cy="7" rx="5" ry="3.2" fill="var(--blush)" opacity=".45"/>
+</g><path d="M84 112 Q126 134 164 108" fill="none" stroke="var(--a1)" stroke-width="11" stroke-linecap="round"/><g class="hb" style="animation-delay:0s"><path transform="translate(118,58) scale(1.2)" opacity="0.95" fill="var(--heart)" d="M0 5.6 C -6.6 -1.4, -3.8 -8.2, 0 -3.6 C 3.8 -8.2, 6.6 -1.4, 0 5.6 Z"/></g><g class="hb" style="animation-delay:0.7s"><path transform="translate(104,40) scale(0.9)" opacity="0.7" fill="var(--heart)" d="M0 5.6 C -6.6 -1.4, -3.8 -8.2, 0 -3.6 C 3.8 -8.2, 6.6 -1.4, 0 5.6 Z"/></g><g class="hb" style="animation-delay:1.5s"><path transform="translate(140,26) scale(1.1)" opacity="0.6" fill="var(--heart)" d="M0 5.6 C -6.6 -1.4, -3.8 -8.2, 0 -3.6 C 3.8 -8.2, 6.6 -1.4, 0 5.6 Z"/></g></svg></div>
+<div class="scene" data-g="behind"><svg class="art " viewBox="0 0 220 165" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><rect x="30" y="92" width="160" height="28" rx="13" fill="var(--couch2)"/><rect x="30" y="116" width="160" height="36" rx="14" fill="var(--couch)"/><g transform="translate(94,50) rotate(7) scale(0.92)">
+<circle cx="-17" cy="-16" r="9" fill="var(--a1)"/><circle cx="17" cy="-16" r="9" fill="var(--a1)"/>
+<circle cx="-17" cy="-16" r="4.6" fill="var(--a2)"/><circle cx="17" cy="-16" r="4.6" fill="var(--a2)"/>
+<ellipse cx="0" cy="44" rx="21" ry="24" fill="var(--a1)"/>
+<ellipse cx="0" cy="49" rx="12.5" ry="16" fill="var(--a2)" opacity=".75"/>
+<circle cx="0" cy="0" r="23" fill="var(--a1)"/>
+<ellipse cx="0" cy="8" rx="12" ry="9" fill="var(--a2)"/>
+<ellipse cx="0" cy="3.5" rx="3.4" ry="2.6" fill="var(--ink)"/>
+<path d="M-13.0 -2.5 q4.5 -5.5 9 0" fill="none" stroke="var(--ink)" stroke-width="2.4" stroke-linecap="round"/>
+<path d="M4.0 -2.5 q4.5 -5.5 9 0" fill="none" stroke="var(--ink)" stroke-width="2.4" stroke-linecap="round"/>
+<ellipse cx="-17.0" cy="7" rx="5" ry="3.2" fill="var(--blush)" opacity=".45"/>
+<ellipse cx="17.0" cy="7" rx="5" ry="3.2" fill="var(--blush)" opacity=".45"/>
+</g><g transform="translate(116,72) rotate(-3) scale(1.0)">
+<circle cx="-17" cy="-16" r="9" fill="var(--b1)"/><circle cx="17" cy="-16" r="9" fill="var(--b1)"/>
+<circle cx="-17" cy="-16" r="4.6" fill="var(--b2)"/><circle cx="17" cy="-16" r="4.6" fill="var(--b2)"/>
+<ellipse cx="0" cy="44" rx="21" ry="24" fill="var(--b1)"/>
+<ellipse cx="0" cy="49" rx="12.5" ry="16" fill="var(--b2)" opacity=".75"/>
+<circle cx="0" cy="0" r="23" fill="var(--b1)"/>
+<ellipse cx="0" cy="8" rx="12" ry="9" fill="var(--b2)"/>
+<ellipse cx="0" cy="3.5" rx="3.4" ry="2.6" fill="var(--ink)"/>
+<path d="M-13.0 -2.5 q4.5 -5.5 9 0" fill="none" stroke="var(--ink)" stroke-width="2.4" stroke-linecap="round"/>
+<path d="M4.0 -2.5 q4.5 -5.5 9 0" fill="none" stroke="var(--ink)" stroke-width="2.4" stroke-linecap="round"/>
+<ellipse cx="-17.0" cy="7" rx="5" ry="3.2" fill="var(--blush)" opacity=".45"/>
+<ellipse cx="17.0" cy="7" rx="5" ry="3.2" fill="var(--blush)" opacity=".45"/>
+</g><path d="M72 100 Q116 140 160 102" fill="none" stroke="var(--a1)" stroke-width="12" stroke-linecap="round"/><g class="hb" style="animation-delay:0s"><path transform="translate(150,40) scale(1.3)" opacity="0.95" fill="var(--heart)" d="M0 5.6 C -6.6 -1.4, -3.8 -8.2, 0 -3.6 C 3.8 -8.2, 6.6 -1.4, 0 5.6 Z"/></g><g class="hb" style="animation-delay:1.1s"><path transform="translate(62,48) scale(1.0)" opacity="0.65" fill="var(--heart)" d="M0 5.6 C -6.6 -1.4, -3.8 -8.2, 0 -3.6 C 3.8 -8.2, 6.6 -1.4, 0 5.6 Z"/></g></svg></div>
+<div class="scene" data-g="lap"><svg class="art " viewBox="0 0 220 165" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><rect x="30" y="92" width="160" height="28" rx="13" fill="var(--couch2)"/><rect x="30" y="116" width="160" height="36" rx="14" fill="var(--couch)"/><g transform="translate(92,70) rotate(-3) scale(1.0)">
+<circle cx="-17" cy="-16" r="9" fill="var(--a1)"/><circle cx="17" cy="-16" r="9" fill="var(--a1)"/>
+<circle cx="-17" cy="-16" r="4.6" fill="var(--a2)"/><circle cx="17" cy="-16" r="4.6" fill="var(--a2)"/>
+<ellipse cx="0" cy="44" rx="21" ry="24" fill="var(--a1)"/>
+<ellipse cx="0" cy="49" rx="12.5" ry="16" fill="var(--a2)" opacity=".75"/>
+<circle cx="0" cy="0" r="23" fill="var(--a1)"/>
+<ellipse cx="0" cy="8" rx="12" ry="9" fill="var(--a2)"/>
+<ellipse cx="0" cy="3.5" rx="3.4" ry="2.6" fill="var(--ink)"/>
+<path d="M-13.0 -2.5 q4.5 -5.5 9 0" fill="none" stroke="var(--ink)" stroke-width="2.4" stroke-linecap="round"/>
+<path d="M4.0 -2.5 q4.5 -5.5 9 0" fill="none" stroke="var(--ink)" stroke-width="2.4" stroke-linecap="round"/>
+<ellipse cx="-17.0" cy="7" rx="5" ry="3.2" fill="var(--blush)" opacity=".45"/>
+<ellipse cx="17.0" cy="7" rx="5" ry="3.2" fill="var(--blush)" opacity=".45"/>
+</g><g transform="translate(116,58) rotate(-13) scale(0.86)">
+<circle cx="-17" cy="-16" r="9" fill="var(--b1)"/><circle cx="17" cy="-16" r="9" fill="var(--b1)"/>
+<circle cx="-17" cy="-16" r="4.6" fill="var(--b2)"/><circle cx="17" cy="-16" r="4.6" fill="var(--b2)"/>
+<ellipse cx="0" cy="44" rx="21" ry="24" fill="var(--b1)"/>
+<ellipse cx="0" cy="49" rx="12.5" ry="16" fill="var(--b2)" opacity=".75"/>
+<circle cx="0" cy="0" r="23" fill="var(--b1)"/>
+<ellipse cx="0" cy="8" rx="12" ry="9" fill="var(--b2)"/>
+<ellipse cx="0" cy="3.5" rx="3.4" ry="2.6" fill="var(--ink)"/>
+<path d="M-13.0 -2.5 q4.5 -5.5 9 0" fill="none" stroke="var(--ink)" stroke-width="2.4" stroke-linecap="round"/>
+<path d="M4.0 -2.5 q4.5 -5.5 9 0" fill="none" stroke="var(--ink)" stroke-width="2.4" stroke-linecap="round"/>
+<ellipse cx="-17.0" cy="7" rx="5" ry="3.2" fill="var(--blush)" opacity=".45"/>
+<ellipse cx="17.0" cy="7" rx="5" ry="3.2" fill="var(--blush)" opacity=".45"/>
+</g><path d="M118 104 Q142 114 158 104" fill="none" stroke="var(--b1)" stroke-width="10" stroke-linecap="round"/><path d="M78 108 Q118 126 158 106" fill="none" stroke="var(--a1)" stroke-width="12" stroke-linecap="round"/><path d="M136 64 Q112 48 88 58" fill="none" stroke="var(--b1)" stroke-width="9" stroke-linecap="round"/><g class="hb" style="animation-delay:0s"><path transform="translate(150,34) scale(1.4)" opacity="0.95" fill="var(--heart)" d="M0 5.6 C -6.6 -1.4, -3.8 -8.2, 0 -3.6 C 3.8 -8.2, 6.6 -1.4, 0 5.6 Z"/></g><g class="hb" style="animation-delay:1.2s"><path transform="translate(66,44) scale(1.0)" opacity="0.6" fill="var(--heart)" d="M0 5.6 C -6.6 -1.4, -3.8 -8.2, 0 -3.6 C 3.8 -8.2, 6.6 -1.4, 0 5.6 Z"/></g></svg></div>
+    <p class="caption" id="caption">Send her something</p>
+    <p class="stamp" id="stamp"></p>
+  </main>
+
+  <nav class="tray" id="tray" aria-label="Send something">
+    <button class="pick" type="button" data-g="hug" aria-label="Send A hug"><span class="thumb"><svg class="art mini" viewBox="0 0 220 165" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M150 96 Q110 84 70 94" fill="none" stroke="var(--b1)" stroke-width="10" stroke-linecap="round"/><g transform="translate(86,68) rotate(11) scale(1.0)">
+<circle cx="-17" cy="-16" r="9" fill="var(--a1)"/><circle cx="17" cy="-16" r="9" fill="var(--a1)"/>
+<circle cx="-17" cy="-16" r="4.6" fill="var(--a2)"/><circle cx="17" cy="-16" r="4.6" fill="var(--a2)"/>
+<ellipse cx="0" cy="44" rx="21" ry="24" fill="var(--a1)"/>
+<ellipse cx="0" cy="49" rx="12.5" ry="16" fill="var(--a2)" opacity=".75"/>
+<circle cx="0" cy="0" r="23" fill="var(--a1)"/>
+<ellipse cx="0" cy="8" rx="12" ry="9" fill="var(--a2)"/>
+<ellipse cx="0" cy="3.5" rx="3.4" ry="2.6" fill="var(--ink)"/>
+<path d="M-13.0 -2.5 q4.5 -5.5 9 0" fill="none" stroke="var(--ink)" stroke-width="2.4" stroke-linecap="round"/>
+<path d="M4.0 -2.5 q4.5 -5.5 9 0" fill="none" stroke="var(--ink)" stroke-width="2.4" stroke-linecap="round"/>
+<ellipse cx="-17.0" cy="7" rx="5" ry="3.2" fill="var(--blush)" opacity=".45"/>
+<ellipse cx="17.0" cy="7" rx="5" ry="3.2" fill="var(--blush)" opacity=".45"/>
+</g><g transform="translate(134,68) rotate(-11) scale(1.0)">
+<circle cx="-17" cy="-16" r="9" fill="var(--b1)"/><circle cx="17" cy="-16" r="9" fill="var(--b1)"/>
+<circle cx="-17" cy="-16" r="4.6" fill="var(--b2)"/><circle cx="17" cy="-16" r="4.6" fill="var(--b2)"/>
+<ellipse cx="0" cy="44" rx="21" ry="24" fill="var(--b1)"/>
+<ellipse cx="0" cy="49" rx="12.5" ry="16" fill="var(--b2)" opacity=".75"/>
+<circle cx="0" cy="0" r="23" fill="var(--b1)"/>
+<ellipse cx="0" cy="8" rx="12" ry="9" fill="var(--b2)"/>
+<ellipse cx="0" cy="3.5" rx="3.4" ry="2.6" fill="var(--ink)"/>
+<path d="M-13.0 -2.5 q4.5 -5.5 9 0" fill="none" stroke="var(--ink)" stroke-width="2.4" stroke-linecap="round"/>
+<path d="M4.0 -2.5 q4.5 -5.5 9 0" fill="none" stroke="var(--ink)" stroke-width="2.4" stroke-linecap="round"/>
+<ellipse cx="-17.0" cy="7" rx="5" ry="3.2" fill="var(--blush)" opacity=".45"/>
+<ellipse cx="17.0" cy="7" rx="5" ry="3.2" fill="var(--blush)" opacity=".45"/>
+</g><path d="M68 104 Q110 126 152 104" fill="none" stroke="var(--a1)" stroke-width="11" stroke-linecap="round"/><g class="hb" style="animation-delay:0s"><path transform="translate(110,30) scale(1.5)" opacity="0.95" fill="var(--heart)" d="M0 5.6 C -6.6 -1.4, -3.8 -8.2, 0 -3.6 C 3.8 -8.2, 6.6 -1.4, 0 5.6 Z"/></g><g class="hb" style="animation-delay:0.9s"><path transform="translate(84,40) scale(1.0)" opacity="0.7" fill="var(--heart)" d="M0 5.6 C -6.6 -1.4, -3.8 -8.2, 0 -3.6 C 3.8 -8.2, 6.6 -1.4, 0 5.6 Z"/></g><g class="hb" style="animation-delay:1.7s"><path transform="translate(136,42) scale(1.1)" opacity="0.7" fill="var(--heart)" d="M0 5.6 C -6.6 -1.4, -3.8 -8.2, 0 -3.6 C 3.8 -8.2, 6.6 -1.4, 0 5.6 Z"/></g></svg></span><span class="lab">A hug</span></button>
+<button class="pick" type="button" data-g="kiss" aria-label="Send A kiss"><span class="thumb"><svg class="art mini" viewBox="0 0 220 165" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><g transform="translate(92,72) rotate(14) scale(1.0)">
+<circle cx="-17" cy="-16" r="9" fill="var(--a1)"/><circle cx="17" cy="-16" r="9" fill="var(--a1)"/>
+<circle cx="-17" cy="-16" r="4.6" fill="var(--a2)"/><circle cx="17" cy="-16" r="4.6" fill="var(--a2)"/>
+<ellipse cx="0" cy="44" rx="21" ry="24" fill="var(--a1)"/>
+<ellipse cx="0" cy="49" rx="12.5" ry="16" fill="var(--a2)" opacity=".75"/>
+<circle cx="0" cy="0" r="23" fill="var(--a1)"/>
+<ellipse cx="11" cy="8" rx="12" ry="9" fill="var(--a2)"/>
+<ellipse cx="11" cy="3.5" rx="3.4" ry="2.6" fill="var(--ink)"/>
+<path d="M-8.05 -2.5 q4.5 -5.5 9 0" fill="none" stroke="var(--ink)" stroke-width="2.4" stroke-linecap="round"/>
+<path d="M8.95 -2.5 q4.5 -5.5 9 0" fill="none" stroke="var(--ink)" stroke-width="2.4" stroke-linecap="round"/>
+<ellipse cx="-14.525" cy="7" rx="5" ry="3.2" fill="var(--blush)" opacity=".45"/>
+<ellipse cx="19.475" cy="7" rx="5" ry="3.2" fill="var(--blush)" opacity=".45"/>
+</g><g transform="translate(128,72) rotate(-14) scale(1.0)">
+<circle cx="-17" cy="-16" r="9" fill="var(--b1)"/><circle cx="17" cy="-16" r="9" fill="var(--b1)"/>
+<circle cx="-17" cy="-16" r="4.6" fill="var(--b2)"/><circle cx="17" cy="-16" r="4.6" fill="var(--b2)"/>
+<ellipse cx="0" cy="44" rx="21" ry="24" fill="var(--b1)"/>
+<ellipse cx="0" cy="49" rx="12.5" ry="16" fill="var(--b2)" opacity=".75"/>
+<circle cx="0" cy="0" r="23" fill="var(--b1)"/>
+<ellipse cx="-11" cy="8" rx="12" ry="9" fill="var(--b2)"/>
+<ellipse cx="-11" cy="3.5" rx="3.4" ry="2.6" fill="var(--ink)"/>
+<path d="M-17.95 -2.5 q4.5 -5.5 9 0" fill="none" stroke="var(--ink)" stroke-width="2.4" stroke-linecap="round"/>
+<path d="M-0.9500000000000002 -2.5 q4.5 -5.5 9 0" fill="none" stroke="var(--ink)" stroke-width="2.4" stroke-linecap="round"/>
+<ellipse cx="-19.475" cy="7" rx="5" ry="3.2" fill="var(--blush)" opacity=".45"/>
+<ellipse cx="14.525" cy="7" rx="5" ry="3.2" fill="var(--blush)" opacity=".45"/>
+</g><path d="M72 102 Q110 122 148 104" fill="none" stroke="var(--a1)" stroke-width="11" stroke-linecap="round"/><g class="hb" style="animation-delay:0s"><path transform="translate(110,26) scale(1.9)" opacity="0.95" fill="var(--heart)" d="M0 5.6 C -6.6 -1.4, -3.8 -8.2, 0 -3.6 C 3.8 -8.2, 6.6 -1.4, 0 5.6 Z"/></g><g class="hb" style="animation-delay:0.8s"><path transform="translate(86,40) scale(1.0)" opacity="0.65" fill="var(--heart)" d="M0 5.6 C -6.6 -1.4, -3.8 -8.2, 0 -3.6 C 3.8 -8.2, 6.6 -1.4, 0 5.6 Z"/></g><g class="hb" style="animation-delay:1.6s"><path transform="translate(136,38) scale(1.1)" opacity="0.65" fill="var(--heart)" d="M0 5.6 C -6.6 -1.4, -3.8 -8.2, 0 -3.6 C 3.8 -8.2, 6.6 -1.4, 0 5.6 Z"/></g></svg></span><span class="lab">A kiss</span></button>
+<button class="pick" type="button" data-g="neck" aria-label="Send Neck kiss"><span class="thumb"><svg class="art mini" viewBox="0 0 220 165" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><g transform="translate(134,62) rotate(-5) scale(1.0)">
+<circle cx="-17" cy="-16" r="9" fill="var(--b1)"/><circle cx="17" cy="-16" r="9" fill="var(--b1)"/>
+<circle cx="-17" cy="-16" r="4.6" fill="var(--b2)"/><circle cx="17" cy="-16" r="4.6" fill="var(--b2)"/>
+<ellipse cx="0" cy="44" rx="21" ry="24" fill="var(--b1)"/>
+<ellipse cx="0" cy="49" rx="12.5" ry="16" fill="var(--b2)" opacity=".75"/>
+<circle cx="0" cy="0" r="23" fill="var(--b1)"/>
+<ellipse cx="0" cy="8" rx="12" ry="9" fill="var(--b2)"/>
+<ellipse cx="0" cy="3.5" rx="3.4" ry="2.6" fill="var(--ink)"/>
+<path d="M-13.0 -2.5 q4.5 -5.5 9 0" fill="none" stroke="var(--ink)" stroke-width="2.4" stroke-linecap="round"/>
+<path d="M4.0 -2.5 q4.5 -5.5 9 0" fill="none" stroke="var(--ink)" stroke-width="2.4" stroke-linecap="round"/>
+<ellipse cx="-17.0" cy="7" rx="5" ry="3.2" fill="var(--blush)" opacity=".45"/>
+<ellipse cx="17.0" cy="7" rx="5" ry="3.2" fill="var(--blush)" opacity=".45"/>
+</g><g transform="translate(104,80) rotate(32) scale(0.92)">
+<circle cx="-17" cy="-16" r="9" fill="var(--a1)"/><circle cx="17" cy="-16" r="9" fill="var(--a1)"/>
+<circle cx="-17" cy="-16" r="4.6" fill="var(--a2)"/><circle cx="17" cy="-16" r="4.6" fill="var(--a2)"/>
+<ellipse cx="0" cy="44" rx="21" ry="24" fill="var(--a1)"/>
+<ellipse cx="0" cy="49" rx="12.5" ry="16" fill="var(--a2)" opacity=".75"/>
+<circle cx="0" cy="0" r="23" fill="var(--a1)"/>
+<ellipse cx="12" cy="8" rx="12" ry="9" fill="var(--a2)"/>
+<ellipse cx="12" cy="3.5" rx="3.4" ry="2.6" fill="var(--ink)"/>
+<path d="M-7.6 -2.5 q4.5 -5.5 9 0" fill="none" stroke="var(--ink)" stroke-width="2.4" stroke-linecap="round"/>
+<path d="M9.4 -2.5 q4.5 -5.5 9 0" fill="none" stroke="var(--ink)" stroke-width="2.4" stroke-linecap="round"/>
+<ellipse cx="-14.3" cy="7" rx="5" ry="3.2" fill="var(--blush)" opacity=".45"/>
+<ellipse cx="19.7" cy="7" rx="5" ry="3.2" fill="var(--blush)" opacity=".45"/>
+</g><path d="M84 112 Q126 134 164 108" fill="none" stroke="var(--a1)" stroke-width="11" stroke-linecap="round"/><g class="hb" style="animation-delay:0s"><path transform="translate(118,58) scale(1.2)" opacity="0.95" fill="var(--heart)" d="M0 5.6 C -6.6 -1.4, -3.8 -8.2, 0 -3.6 C 3.8 -8.2, 6.6 -1.4, 0 5.6 Z"/></g><g class="hb" style="animation-delay:0.7s"><path transform="translate(104,40) scale(0.9)" opacity="0.7" fill="var(--heart)" d="M0 5.6 C -6.6 -1.4, -3.8 -8.2, 0 -3.6 C 3.8 -8.2, 6.6 -1.4, 0 5.6 Z"/></g><g class="hb" style="animation-delay:1.5s"><path transform="translate(140,26) scale(1.1)" opacity="0.6" fill="var(--heart)" d="M0 5.6 C -6.6 -1.4, -3.8 -8.2, 0 -3.6 C 3.8 -8.2, 6.6 -1.4, 0 5.6 Z"/></g></svg></span><span class="lab">Neck kiss</span></button>
+<button class="pick" type="button" data-g="behind" aria-label="Send From behind"><span class="thumb"><svg class="art mini" viewBox="0 0 220 165" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><rect x="30" y="92" width="160" height="28" rx="13" fill="var(--couch2)"/><rect x="30" y="116" width="160" height="36" rx="14" fill="var(--couch)"/><g transform="translate(94,50) rotate(7) scale(0.92)">
+<circle cx="-17" cy="-16" r="9" fill="var(--a1)"/><circle cx="17" cy="-16" r="9" fill="var(--a1)"/>
+<circle cx="-17" cy="-16" r="4.6" fill="var(--a2)"/><circle cx="17" cy="-16" r="4.6" fill="var(--a2)"/>
+<ellipse cx="0" cy="44" rx="21" ry="24" fill="var(--a1)"/>
+<ellipse cx="0" cy="49" rx="12.5" ry="16" fill="var(--a2)" opacity=".75"/>
+<circle cx="0" cy="0" r="23" fill="var(--a1)"/>
+<ellipse cx="0" cy="8" rx="12" ry="9" fill="var(--a2)"/>
+<ellipse cx="0" cy="3.5" rx="3.4" ry="2.6" fill="var(--ink)"/>
+<path d="M-13.0 -2.5 q4.5 -5.5 9 0" fill="none" stroke="var(--ink)" stroke-width="2.4" stroke-linecap="round"/>
+<path d="M4.0 -2.5 q4.5 -5.5 9 0" fill="none" stroke="var(--ink)" stroke-width="2.4" stroke-linecap="round"/>
+<ellipse cx="-17.0" cy="7" rx="5" ry="3.2" fill="var(--blush)" opacity=".45"/>
+<ellipse cx="17.0" cy="7" rx="5" ry="3.2" fill="var(--blush)" opacity=".45"/>
+</g><g transform="translate(116,72) rotate(-3) scale(1.0)">
+<circle cx="-17" cy="-16" r="9" fill="var(--b1)"/><circle cx="17" cy="-16" r="9" fill="var(--b1)"/>
+<circle cx="-17" cy="-16" r="4.6" fill="var(--b2)"/><circle cx="17" cy="-16" r="4.6" fill="var(--b2)"/>
+<ellipse cx="0" cy="44" rx="21" ry="24" fill="var(--b1)"/>
+<ellipse cx="0" cy="49" rx="12.5" ry="16" fill="var(--b2)" opacity=".75"/>
+<circle cx="0" cy="0" r="23" fill="var(--b1)"/>
+<ellipse cx="0" cy="8" rx="12" ry="9" fill="var(--b2)"/>
+<ellipse cx="0" cy="3.5" rx="3.4" ry="2.6" fill="var(--ink)"/>
+<path d="M-13.0 -2.5 q4.5 -5.5 9 0" fill="none" stroke="var(--ink)" stroke-width="2.4" stroke-linecap="round"/>
+<path d="M4.0 -2.5 q4.5 -5.5 9 0" fill="none" stroke="var(--ink)" stroke-width="2.4" stroke-linecap="round"/>
+<ellipse cx="-17.0" cy="7" rx="5" ry="3.2" fill="var(--blush)" opacity=".45"/>
+<ellipse cx="17.0" cy="7" rx="5" ry="3.2" fill="var(--blush)" opacity=".45"/>
+</g><path d="M72 100 Q116 140 160 102" fill="none" stroke="var(--a1)" stroke-width="12" stroke-linecap="round"/><g class="hb" style="animation-delay:0s"><path transform="translate(150,40) scale(1.3)" opacity="0.95" fill="var(--heart)" d="M0 5.6 C -6.6 -1.4, -3.8 -8.2, 0 -3.6 C 3.8 -8.2, 6.6 -1.4, 0 5.6 Z"/></g><g class="hb" style="animation-delay:1.1s"><path transform="translate(62,48) scale(1.0)" opacity="0.65" fill="var(--heart)" d="M0 5.6 C -6.6 -1.4, -3.8 -8.2, 0 -3.6 C 3.8 -8.2, 6.6 -1.4, 0 5.6 Z"/></g></svg></span><span class="lab">From behind</span></button>
+<button class="pick" type="button" data-g="lap" aria-label="Send On my lap"><span class="thumb"><svg class="art mini" viewBox="0 0 220 165" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><rect x="30" y="92" width="160" height="28" rx="13" fill="var(--couch2)"/><rect x="30" y="116" width="160" height="36" rx="14" fill="var(--couch)"/><g transform="translate(92,70) rotate(-3) scale(1.0)">
+<circle cx="-17" cy="-16" r="9" fill="var(--a1)"/><circle cx="17" cy="-16" r="9" fill="var(--a1)"/>
+<circle cx="-17" cy="-16" r="4.6" fill="var(--a2)"/><circle cx="17" cy="-16" r="4.6" fill="var(--a2)"/>
+<ellipse cx="0" cy="44" rx="21" ry="24" fill="var(--a1)"/>
+<ellipse cx="0" cy="49" rx="12.5" ry="16" fill="var(--a2)" opacity=".75"/>
+<circle cx="0" cy="0" r="23" fill="var(--a1)"/>
+<ellipse cx="0" cy="8" rx="12" ry="9" fill="var(--a2)"/>
+<ellipse cx="0" cy="3.5" rx="3.4" ry="2.6" fill="var(--ink)"/>
+<path d="M-13.0 -2.5 q4.5 -5.5 9 0" fill="none" stroke="var(--ink)" stroke-width="2.4" stroke-linecap="round"/>
+<path d="M4.0 -2.5 q4.5 -5.5 9 0" fill="none" stroke="var(--ink)" stroke-width="2.4" stroke-linecap="round"/>
+<ellipse cx="-17.0" cy="7" rx="5" ry="3.2" fill="var(--blush)" opacity=".45"/>
+<ellipse cx="17.0" cy="7" rx="5" ry="3.2" fill="var(--blush)" opacity=".45"/>
+</g><g transform="translate(116,58) rotate(-13) scale(0.86)">
+<circle cx="-17" cy="-16" r="9" fill="var(--b1)"/><circle cx="17" cy="-16" r="9" fill="var(--b1)"/>
+<circle cx="-17" cy="-16" r="4.6" fill="var(--b2)"/><circle cx="17" cy="-16" r="4.6" fill="var(--b2)"/>
+<ellipse cx="0" cy="44" rx="21" ry="24" fill="var(--b1)"/>
+<ellipse cx="0" cy="49" rx="12.5" ry="16" fill="var(--b2)" opacity=".75"/>
+<circle cx="0" cy="0" r="23" fill="var(--b1)"/>
+<ellipse cx="0" cy="8" rx="12" ry="9" fill="var(--b2)"/>
+<ellipse cx="0" cy="3.5" rx="3.4" ry="2.6" fill="var(--ink)"/>
+<path d="M-13.0 -2.5 q4.5 -5.5 9 0" fill="none" stroke="var(--ink)" stroke-width="2.4" stroke-linecap="round"/>
+<path d="M4.0 -2.5 q4.5 -5.5 9 0" fill="none" stroke="var(--ink)" stroke-width="2.4" stroke-linecap="round"/>
+<ellipse cx="-17.0" cy="7" rx="5" ry="3.2" fill="var(--blush)" opacity=".45"/>
+<ellipse cx="17.0" cy="7" rx="5" ry="3.2" fill="var(--blush)" opacity=".45"/>
+</g><path d="M118 104 Q142 114 158 104" fill="none" stroke="var(--b1)" stroke-width="10" stroke-linecap="round"/><path d="M78 108 Q118 126 158 106" fill="none" stroke="var(--a1)" stroke-width="12" stroke-linecap="round"/><path d="M136 64 Q112 48 88 58" fill="none" stroke="var(--b1)" stroke-width="9" stroke-linecap="round"/><g class="hb" style="animation-delay:0s"><path transform="translate(150,34) scale(1.4)" opacity="0.95" fill="var(--heart)" d="M0 5.6 C -6.6 -1.4, -3.8 -8.2, 0 -3.6 C 3.8 -8.2, 6.6 -1.4, 0 5.6 Z"/></g><g class="hb" style="animation-delay:1.2s"><path transform="translate(66,44) scale(1.0)" opacity="0.6" fill="var(--heart)" d="M0 5.6 C -6.6 -1.4, -3.8 -8.2, 0 -3.6 C 3.8 -8.2, 6.6 -1.4, 0 5.6 Z"/></g></svg></span><span class="lab">On my lap</span></button>
+  </nav>
+</div>
+
+<div class="gate" id="gate" hidden>
+  <svg class="art " viewBox="0 0 220 165" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M150 96 Q110 84 70 94" fill="none" stroke="var(--b1)" stroke-width="10" stroke-linecap="round"/><g transform="translate(86,68) rotate(11) scale(1.0)">
+<circle cx="-17" cy="-16" r="9" fill="var(--a1)"/><circle cx="17" cy="-16" r="9" fill="var(--a1)"/>
+<circle cx="-17" cy="-16" r="4.6" fill="var(--a2)"/><circle cx="17" cy="-16" r="4.6" fill="var(--a2)"/>
+<ellipse cx="0" cy="44" rx="21" ry="24" fill="var(--a1)"/>
+<ellipse cx="0" cy="49" rx="12.5" ry="16" fill="var(--a2)" opacity=".75"/>
+<circle cx="0" cy="0" r="23" fill="var(--a1)"/>
+<ellipse cx="0" cy="8" rx="12" ry="9" fill="var(--a2)"/>
+<ellipse cx="0" cy="3.5" rx="3.4" ry="2.6" fill="var(--ink)"/>
+<path d="M-13.0 -2.5 q4.5 -5.5 9 0" fill="none" stroke="var(--ink)" stroke-width="2.4" stroke-linecap="round"/>
+<path d="M4.0 -2.5 q4.5 -5.5 9 0" fill="none" stroke="var(--ink)" stroke-width="2.4" stroke-linecap="round"/>
+<ellipse cx="-17.0" cy="7" rx="5" ry="3.2" fill="var(--blush)" opacity=".45"/>
+<ellipse cx="17.0" cy="7" rx="5" ry="3.2" fill="var(--blush)" opacity=".45"/>
+</g><g transform="translate(134,68) rotate(-11) scale(1.0)">
+<circle cx="-17" cy="-16" r="9" fill="var(--b1)"/><circle cx="17" cy="-16" r="9" fill="var(--b1)"/>
+<circle cx="-17" cy="-16" r="4.6" fill="var(--b2)"/><circle cx="17" cy="-16" r="4.6" fill="var(--b2)"/>
+<ellipse cx="0" cy="44" rx="21" ry="24" fill="var(--b1)"/>
+<ellipse cx="0" cy="49" rx="12.5" ry="16" fill="var(--b2)" opacity=".75"/>
+<circle cx="0" cy="0" r="23" fill="var(--b1)"/>
+<ellipse cx="0" cy="8" rx="12" ry="9" fill="var(--b2)"/>
+<ellipse cx="0" cy="3.5" rx="3.4" ry="2.6" fill="var(--ink)"/>
+<path d="M-13.0 -2.5 q4.5 -5.5 9 0" fill="none" stroke="var(--ink)" stroke-width="2.4" stroke-linecap="round"/>
+<path d="M4.0 -2.5 q4.5 -5.5 9 0" fill="none" stroke="var(--ink)" stroke-width="2.4" stroke-linecap="round"/>
+<ellipse cx="-17.0" cy="7" rx="5" ry="3.2" fill="var(--blush)" opacity=".45"/>
+<ellipse cx="17.0" cy="7" rx="5" ry="3.2" fill="var(--blush)" opacity=".45"/>
+</g><path d="M68 104 Q110 126 152 104" fill="none" stroke="var(--a1)" stroke-width="11" stroke-linecap="round"/><g class="hb" style="animation-delay:0s"><path transform="translate(110,30) scale(1.5)" opacity="0.95" fill="var(--heart)" d="M0 5.6 C -6.6 -1.4, -3.8 -8.2, 0 -3.6 C 3.8 -8.2, 6.6 -1.4, 0 5.6 Z"/></g><g class="hb" style="animation-delay:0.9s"><path transform="translate(84,40) scale(1.0)" opacity="0.7" fill="var(--heart)" d="M0 5.6 C -6.6 -1.4, -3.8 -8.2, 0 -3.6 C 3.8 -8.2, 6.6 -1.4, 0 5.6 Z"/></g><g class="hb" style="animation-delay:1.7s"><path transform="translate(136,42) scale(1.1)" opacity="0.7" fill="var(--heart)" d="M0 5.6 C -6.6 -1.4, -3.8 -8.2, 0 -3.6 C 3.8 -8.2, 6.6 -1.4, 0 5.6 Z"/></g></svg>
+  <h1>Your key</h1>
+  <p>Paste the key you were given. It stays on this device, and only your key can send as you.</p>
+  <form id="gate-form">
+    <input id="gate-input" type="password" autocomplete="off" autocapitalize="off"
+           spellcheck="false" placeholder="Key" aria-label="Your key">
+    <button type="submit">Open</button>
+  </form>
+  <p class="err" id="gate-err"></p>
+</div>
+
+<script>
+(function(){
+  var L = {"hug": {"title": "A hug", "verb": "sent you a hug"}, "kiss": {"title": "A kiss", "verb": "kissed you"}, "neck": {"title": "Neck kiss", "verb": "kissed your neck"}, "behind": {"title": "From behind", "verb": "hugged you from behind"}, "lap": {"title": "On my lap", "verb": "pulled you onto their lap"}};
+
+  var app = document.getElementById("app"),
+      gate = document.getElementById("gate"),
+      gateErr = document.getElementById("gate-err"),
+      stage = document.getElementById("stage"),
+      caption = document.getElementById("caption"),
+      stamp = document.getElementById("stamp"),
+      whoami = document.getElementById("whoami"),
+      toastEl = document.getElementById("toast"),
+      key = null, youId = null, names = {}, poll = null,
+      lastShown = null, toastTimer = null;
+
+  function scenes(){ return stage.querySelectorAll(".scene"); }
+
+  function showScene(g, animate){
+    Array.prototype.forEach.call(scenes(), function(el){
+      el.classList.toggle("on", el.dataset.g === g);
+    });
+    if(animate){
+      stage.classList.remove("pop");
+      void stage.offsetWidth;          /* restart the animation */
+      stage.classList.add("pop");
+    }
+  }
+
+  function ago(ts){
+    var s = Math.max(0, (Date.now() - ts) / 1000);
+    if(s < 60) return "just now";
+    if(s < 3600) return Math.floor(s/60) + " min ago";
+    var d = new Date(ts);
+    if(d.toDateString() === new Date().toDateString())
+      return d.toLocaleTimeString([], {hour:"numeric", minute:"2-digit"});
+    return d.toLocaleDateString([], {month:"short", day:"numeric"}) + ", " +
+           d.toLocaleTimeString([], {hour:"numeric", minute:"2-digit"});
+  }
+
+  function present(ev, animate){
+    if(!ev){
+      stage.classList.add("empty");
+      caption.textContent = "Nothing yet — send the first one";
+      stamp.textContent = "";
+      showScene("hug", false);
+      return;
+    }
+    stage.classList.remove("empty");
+    var meta = L[ev.g] || {title:"Something", verb:"sent you something"};
+    var them = names[ev.from] || "They";
+    caption.textContent = ev.from === youId
+      ? "You sent " + meta.title.toLowerCase()
+      : them + " " + meta.verb;
+    stamp.textContent = ago(ev.at);
+    showScene(ev.g, animate);
+    lastShown = ev.id;
+  }
+
+  function toast(msg){
+    toastEl.textContent = msg;
+    toastEl.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function(){ toastEl.classList.remove("show"); }, 2600);
+  }
+
+  function lastSeenIncoming(){
+    try{ return localStorage.getItem("hugSeen"); }catch(e){ return null; }
+  }
+  function markSeen(id){
+    try{ localStorage.setItem("hugSeen", id); }catch(e){}
+  }
+
+  function apply(state, firstLoad){
+    youId = state.you;
+    names = state.names || {};
+    var themId = Object.keys(names).filter(function(k){ return k !== youId; })[0];
+    whoami.textContent = names[youId] + "  \u0026  " + (names[themId] || "…");
+
+    var events = state.events || [];
+    var newest = events[0] || null;
+    var newestIn = events.filter(function(e){ return e.from !== youId; })[0] || null;
+
+    /* A gesture from her that this device hasn't shown yet gets the full
+       arrival treatment: animation, buzz, toast. */
+    var unseen = newestIn && newestIn.id !== lastSeenIncoming();
+    if(unseen && !firstLoad){
+      present(newestIn, true);
+      markSeen(newestIn.id);
+      toast(names[newestIn.from] + " is thinking of you");
+      if(navigator.vibrate) navigator.vibrate([18, 70, 18]);
+      return;
+    }
+    if(unseen && firstLoad){
+      present(newestIn, true);
+      markSeen(newestIn.id);
+      return;
+    }
+    if(newest && newest.id !== lastShown) present(newest, firstLoad);
+    else if(!newest) present(null, false);
+    else stamp.textContent = ago(newest.at);
+  }
+
+  /* ---------- network ---------- */
+  function call(method, body){
+    return fetch("/api/hug", {
+      method: method,
+      headers: Object.assign({ "x-hug-key": key },
+               body ? {"content-type":"application/json"} : {}),
+      body: body ? JSON.stringify(body) : undefined
+    }).then(function(r){
+      if(r.status === 401){ var e = new Error("unauthorized"); e.code = 401; throw e; }
+      if(!r.ok) throw new Error("failed");
+      return r.json();
+    });
+  }
+
+  function refresh(){
+    return call("GET").then(function(s){ apply(s, false); }).catch(function(err){
+      if(err.code === 401) forget("That key isn't recognised.");
+    });
+  }
+
+  function send(g, btn){
+    showScene(g, true);
+    stage.classList.remove("empty");
+    caption.textContent = "You sent " + (L[g] ? L[g].title.toLowerCase() : "something");
+    stamp.textContent = "sending…";
+    if(navigator.vibrate) navigator.vibrate(12);
+    btn.dataset.sending = "1";
+    call("POST", {gesture: g}).then(function(s){
+      lastShown = null;
+      apply(s, false);
+    }).catch(function(err){
+      if(err.code === 401) forget("That key isn't recognised.");
+      else { stamp.textContent = ""; toast("Didn't send — try again"); }
+    }).then(function(){ delete btn.dataset.sending; });
+  }
+
+  Array.prototype.forEach.call(document.querySelectorAll(".pick"), function(btn){
+    btn.addEventListener("click", function(){ send(btn.dataset.g, btn); });
+  });
+
+  /* ---------- gate ---------- */
+  function forget(msg){
+    try{ localStorage.removeItem("hugKey"); }catch(e){}
+    key = null; clearInterval(poll);
+    app.hidden = true; gate.hidden = false;
+    gateErr.textContent = msg || "";
+  }
+
+  function start(k){
+    key = k;
+    return call("GET").then(function(state){
+      try{ localStorage.setItem("hugKey", k); }catch(e){}
+      gate.hidden = true; app.hidden = false;
+      apply(state, true);
+      clearInterval(poll);
+      poll = setInterval(refresh, 10000);
+    });
+  }
+
+  document.getElementById("gate-form").addEventListener("submit", function(e){
+    e.preventDefault();
+    var v = document.getElementById("gate-input").value.trim();
+    if(!v) return;
+    gateErr.textContent = "";
+    start(v).catch(function(err){
+      gateErr.textContent = err.code === 401 ? "That key isn't recognised."
+                                             : "Couldn't reach the server.";
+    });
+  });
+
+  document.addEventListener("visibilitychange", function(){
+    if(!document.hidden && key) refresh();
+  });
+
+  var fromUrl = new URLSearchParams(location.search).get("key");
+  if(fromUrl) history.replaceState(null, "", location.pathname);
+  var stored = null;
+  try{ stored = localStorage.getItem("hugKey"); }catch(e){}
+
+  var initial = fromUrl || stored;
+  if(initial) start(initial).catch(function(err){
+    forget(err.code === 401 ? "That key isn't recognised." : "");
+  });
+  else gate.hidden = false;
+})();
+</script>
+</body>
+</html>
